@@ -3,6 +3,7 @@ const prisma = new PrismaClient()
 import bcrypt, { compare } from "bcryptjs"
 import { Request,Response } from "express";
 import { loginSchema, registerSchema } from "../utils/validation";
+import { generatetoken } from "../utils/jwt";
 export const register = async(req:Request,res:Response) =>{
     try{
         const result = registerSchema.safeParse(req.body)
@@ -74,8 +75,10 @@ export const login = async (req:Request,res:Response) =>{
             res.status(401).json({error : "invalid credentials"})
             return
         }
+        const token = generatetoken(existinguser.id)
 
-        
+        res.status(200).json({'token':token})
+
         
         
     }catch(e){
