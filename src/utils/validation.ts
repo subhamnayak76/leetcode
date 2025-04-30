@@ -4,3 +4,11 @@ export const registerSchema = z.object({
     name :z.string().min(1,{message:"Name is required"}),
     password : z.string().min(6,{message:"min 6 chars required in for password"})
 })
+
+
+export const loginSchema = z.object({
+    email : z.string().email(),
+    password : z.string().min(6,{message:"min 6 chars required in for password"})
+})
+    
+

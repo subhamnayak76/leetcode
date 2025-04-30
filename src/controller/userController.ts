@@ -1,8 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient()
-import bcrypt from "bcryptjs"
+import bcrypt, { compare } from "bcryptjs"
 import { Request,Response } from "express";
-import { registerSchema } from "../utils/validation";
+import { loginSchema, registerSchema } from "../utils/validation";
 export const register = async(req:Request,res:Response) =>{
     try{
         const result = registerSchema.safeParse(req.body)
@@ -47,8 +47,42 @@ export const register = async(req:Request,res:Response) =>{
   }
 
 } 
+export const login = async (req:Request,res:Response) =>{
+    try{
+        const result = loginSchema.safeParse(req.body)
+        if(!result.success){
+            res.status(400).json({
+                error:"validation failed",
+                details :result.error.format()
+            })
+            return
+        }
+        const {email,password} = result.data
+        const existinguser = await prisma.user.findUnique({
+            where : {
+               email 
+            }
+        })
+       
+        if(!existinguser){
+            res.status(404).json({msg: "not register "})
+            return
+        }
+         const hashpass = existinguser?.password || ''
+        const credentials = await bcrypt.compare(password,hashpass)
+        if(!credentials){
+            res.status(401).json({error : "invalid credentials"})
+            return
+        }
 
+        
+        
+        
+    }catch(e){
+        console.log('error in the login',e)
+    }    
 
+}
 export const submit = async (req:Request,res:Response) =>{
     const {code,language,problemId,userId} = req.body
     const problem = await prisma.problem.findUnique({
