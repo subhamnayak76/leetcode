@@ -108,7 +108,9 @@ export const submit = async (req:Request,res:Response) =>{
 
         }
     })
+
     await addtoqueue(submission.id)
+    console.log('added to the queue')
 
     res.status(201).json({
         msg : 'recive submision',

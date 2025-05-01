@@ -46,6 +46,8 @@ model TestCase {
   problem   Problem @relation(fields: [problemId], references: [id])
 
   createdAt DateTime @default(now())
+
+  Submission Submission[]
 }
 
 model Submission {
@@ -60,6 +62,7 @@ model Submission {
   userOutput    String?   
   errorOutput   String?   
   createdAt     DateTime  @default(now())
+  testcase TestCase[]
 }
 
 enum Language {
