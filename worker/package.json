@@ -1,11 +1,17 @@
 {
   "devDependencies": {
     "@types/node": "^22.15.3",
+    "cpy-cli": "^5.0.0",
+    "mkdirp": "^3.0.1",
     "prisma": "^6.6.0"
   },
   "dependencies": {
     "@prisma/client": "^6.6.0",
     "bullmq": "^5.51.1",
     "redis": "^5.0.0"
+  },
+  "scripts": {
+    "build": "tsc && npm run copy-templates",
+    "copy-templates": "npx mkdirp dist/templates && npx cpy \"src/templates/*\" dist/templates"
   }
 }
