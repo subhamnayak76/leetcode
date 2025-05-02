@@ -1,3 +1,4 @@
+
 import { Worker } from "bullmq"
 import { redisConfig } from "./config/config"
 import { PrismaClient } from '@prisma/client'
@@ -6,23 +7,16 @@ import fs from 'fs/promises'
 import path from 'path'
 import { promisify } from 'util'
 
-// Convert exec to Promise
 const execPromise = promisify(exec)
-
 const prisma = new PrismaClient()
 
-
 async function getTemplate(problemName: string) {
-  
   const templates: { [key: string]: string } = {
     'two sum': 'twoSum.js',
     'palindrome number': 'palindrome.js',
-    
   }
-  
 
   const templateFile = templates[problemName.toLowerCase()] || 'twoSum.js'
-  
   const templatePath = path.join(__dirname, 'templates', templateFile)
   return await fs.readFile(templatePath, 'utf8')
 }
@@ -48,45 +42,25 @@ const worker = new Worker('submit', async (job) => {
       }
     })
     
-    console.log(`Submission details:`, {
-      id: submissionId,
-      problemTitle: submission?.problem.title,
-      testCaseCount: submission?.problem.testCases.length
-    })
-    
     if (!submission) {
       console.log("No submission found")
       return { error: "submission not found" }
     }
-    
 
     const template = await getTemplate(submission.problem.title)
-    console.log(`Template loaded for ${submission.problem.title}`)
-    
     const combinedCode = injectUserCode(template, submission.code)
-    console.log("User code injected into template")
-    
     
     const filename = `temp_${submissionId}.js`
     await fs.writeFile(filename, combinedCode)
-    console.log(`Temporary file created: ${filename}`)
     
     // Process each test case
     const testResults = []
     let allPassed = true
     
-    console.log("--- RUNNING TEST CASES ---")
-    
-    for (const [index, test] of submission.problem.testCases.entries()) {
-      console.log(`\nRunning test case ${index + 1}:`)
-      console.log(`Input: "${test.input.trim()}"`)
-      console.log(`Expected: "${test.expectedOutput.trim()}"`)
-      
+    for (const test of submission.problem.testCases) {
       try {
-        
         const inputArgs = test.input.replace(/\n/g, ' ')
         const { stdout, stderr } = await execPromise(`node ${filename} ${inputArgs}`)
-        
         
         const output = stdout.trim()
         const expected = test.expectedOutput.trim()
@@ -96,14 +70,6 @@ const worker = new Worker('submit', async (job) => {
           allPassed = false
         }
         
-        console.log(`Test ${index + 1} result: ${passed ? 'PASSED ✅' : 'FAILED ❌'}`)
-        console.log(`- Expected: "${expected}"`)
-        console.log(`- Received: "${output}"`)
-        
-        if (stderr) {
-          console.log(`- Stderr: ${stderr}`)
-        }
-        
         testResults.push({
           testCaseId: test.id,
           passed,
@@ -111,7 +77,6 @@ const worker = new Worker('submit', async (job) => {
           expected
         })
       } catch (error: any) {
-        console.error(`Test ${index + 1} execution error:`, error)
         allPassed = false
         testResults.push({
           testCaseId: test.id,
@@ -123,27 +88,33 @@ const worker = new Worker('submit', async (job) => {
       }
     }
     
-    console.log("\n--- TEST SUMMARY ---")
-    console.log(`Overall result: ${allPassed ? 'ALL TESTS PASSED ✅' : 'SOME TESTS FAILED ❌'}`)
-    console.log(`Total tests: ${testResults.length}`)
-    console.log(`Passed: ${testResults.filter(r => r.passed).length}`)
-    console.log(`Failed: ${testResults.filter(r => !r.passed).length}`)
+    // Update the submission in database
+    await prisma.submission.update({
+      where: { id: submissionId },
+      data: {
+        status: allPassed ? 'PASSED' : 'FAILED',
+        userOutput: JSON.stringify(testResults)
+      }
+    })
     
-    
-    const resultData = {
-      status: allPassed ? 'PASSED' : 'FAILED',
-      userOutput: JSON.stringify(testResults)
-    }
-    
-    console.log("Would update submission with:", resultData)
-    
-    
-    await fs.unlink(filename).catch(e => console.log(`Failed to clean up file ${filename}:`, e))
-    console.log(`Temporary file ${filename} removed`)
+    // Clean up temp file
+    await fs.unlink(filename).catch(() => {})
     
     return { success: true, passed: allPassed, results: testResults }
   } catch (e: unknown) {
     console.log('Worker error:', e)
+    
+    // Update submission with error status if possible
+    if (job.data?.submissionId) {
+      await prisma.submission.update({
+        where: { id: job.data.submissionId },
+        data: {
+          status: 'FAILED',
+          errorOutput: e instanceof Error ? e.message : String(e)
+        }
+      }).catch(() => {})
+    }
+    
     return { error: e instanceof Error ? e.message : String(e) }
   }
 }, { connection: redisConfig })
@@ -158,4 +129,3 @@ worker.on('failed', (job, err) => {
 
 console.log('Worker started and waiting for jobs...')
 
-export default worker
