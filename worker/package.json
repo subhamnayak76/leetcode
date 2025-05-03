@@ -11,7 +11,7 @@
     "redis": "^5.0.0"
   },
   "scripts": {
-    "build": "tsc && npm run copy-templates",
+    "build": "tsc -b && npm run copy-templates",
     "copy-templates": "npx mkdirp dist/templates && npx cpy \"src/templates/*\" dist/templates"
   }
 }
