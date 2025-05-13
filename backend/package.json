@@ -16,6 +16,7 @@
     "amqplib": "^0.10.7",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.51.1",
+    "cors": "^2.8.5",
     "dockerode": "^4.0.6",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
@@ -23,6 +24,7 @@
     "zod": "^3.24.3"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.18",
     "prisma": "^6.6.0"
   }
 }

@@ -122,3 +122,9 @@ export const submit = async (req:Request,res:Response) =>{
         }
     })
 }
+
+export const problem = async(req:Request,res:Response) =>{
+    const problem = await prisma.problem.findMany({})
+    res.status(200).json({problem}
+    )
+}
